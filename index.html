@@ -1,7 +1,150 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>あみだくじ</title>
+<style>
+  body {
+    text-align: center;
+    font-family: sans-serif;
+  }
+  canvas {
+    border: 1px solid black;
+    touch-action: manipulation;
+  }
+  button {
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 16px;
+  }
+</style>
+</head>
 <body>
+
 <h1>あみだくじ</h1>
-<button onclick="alert('成功')">テスト</button>
+<canvas id="amida" width="300" height="500"></canvas><br>
+<button onclick="generate()">生成</button>
+
+<script>
+const canvas = document.getElementById("amida");
+const ctx = canvas.getContext("2d");
+
+const LINE_COUNT = 5;
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
+
+let horizontalLines = [];
+let results = [];
+
+// 金額生成（1000刻み）
+function generateResults() {
+  let arr = [];
+  for (let i = 1; i <= 10; i++) {
+    arr.push(i * 1000);
+  }
+  // シャッフル
+  arr.sort(() => Math.random() - 0.5);
+  return arr.slice(0, LINE_COUNT);
+}
+
+// あみだ生成
+function generate() {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+  const spacing = WIDTH / (LINE_COUNT + 1);
+
+  // 縦線
+  for (let i = 1; i <= LINE_COUNT; i++) {
+    ctx.beginPath();
+    ctx.moveTo(spacing * i, 0);
+    ctx.lineTo(spacing * i, HEIGHT);
+    ctx.stroke();
+  }
+
+  // 横線ランダム
+  horizontalLines = [];
+  for (let y = 50; y < HEIGHT - 50; y += 50) {
+    if (Math.random() > 0.4) {
+      let x = Math.floor(Math.random() * (LINE_COUNT - 1)) + 1;
+      horizontalLines.push({x, y});
+
+      ctx.beginPath();
+      ctx.moveTo(spacing * x, y);
+      ctx.lineTo(spacing * (x + 1), y);
+      ctx.stroke();
+    }
+  }
+
+  // 金額生成
+  results = generateResults();
+
+  // 下に金額表示
+  for (let i = 0; i < LINE_COUNT; i++) {
+    ctx.fillText(results[i] + "円", spacing * (i + 1) - 15, HEIGHT - 10);
+  }
+}
+
+// タップでスタート（iOS対応）
+canvas.addEventListener("click", (e) => {
+  const spacing = WIDTH / (LINE_COUNT + 1);
+  const x = e.offsetX;
+
+  let index = Math.round(x / spacing) - 1;
+  if (index < 0 || index >= LINE_COUNT) return;
+
+  tracePath(index);
+});
+
+// 線をたどる
+function tracePath(startIndex) {
+  let xIndex = startIndex;
+  let y = 0;
+
+  const spacing = WIDTH / (LINE_COUNT + 1);
+
+  function step() {
+    if (y > HEIGHT - 50) {
+      alert(results[xIndex] + "円！");
+      playSound();
+      return;
+    }
+
+    // 横線チェック
+    for (let line of horizontalLines) {
+      if (Math.abs(line.y - y) < 5 && line.x - 1 === xIndex) {
+        xIndex++;
+      } else if (Math.abs(line.y - y) < 5 && line.x === xIndex) {
+        xIndex--;
+      }
+    }
+
+    y += 5;
+    drawPath(xIndex, y);
+
+    requestAnimationFrame(step);
+  }
+
+  step();
+}
+
+// 線描画（赤）
+function drawPath(index, y) {
+  const spacing = WIDTH / (LINE_COUNT + 1);
+
+  ctx.fillStyle = "red";
+  ctx.fillRect(spacing * (index + 1) - 2, y, 4, 4);
+}
+
+// 音声（後で差し替えOK）
+function playSound() {
+  const audio = new Audio("voice.mp3");
+  audio.play().catch(() => {});
+}
+
+// 初期表示
+generate();
+</script>
+
 </body>
 </html>
